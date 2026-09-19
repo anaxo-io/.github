@@ -22,10 +22,14 @@ pre-release-commit-message = "chore: release v{{version}}"
 # instead costs nothing.
 pre-release-hook = ["cargo", "test"]
 
-# Keep a Changelog bookkeeping, identical to what was done by hand for v0.2.0:
-# open a fresh [Unreleased], date the released section, and move the compare link on
-# while adding the new version's own link above the older ones.
+# Keep a Changelog bookkeeping: open a fresh [Unreleased], date the released section,
+# move the compare link on, and add the new version's own link above the older ones.
+#
+# The version link is a compare against the previous release, which is Keep a Changelog's
+# own convention and what these repositories use for every version after the first. A
+# changelog whose links point at release pages instead can swap the second `replace` for
+# `[{{version}}]: https://github.com/anaxo-io/REPO/releases/tag/v{{version}}`.
 pre-release-replacements = [
   { file = "CHANGELOG.md", search = "## \\[Unreleased\\]", replace = "## [Unreleased]\n\n## [{{version}}] - {{date}}", exactly = 1 },
-  { file = "CHANGELOG.md", search = "\\[Unreleased\\]: https://github.com/anaxo-io/REPO/compare/v[0-9.]+\\.\\.\\.HEAD", replace = "[Unreleased]: https://github.com/anaxo-io/REPO/compare/v{{version}}...HEAD\n[{{version}}]: https://github.com/anaxo-io/REPO/releases/tag/v{{version}}", exactly = 1 },
+  { file = "CHANGELOG.md", search = "\\[Unreleased\\]: https://github.com/anaxo-io/REPO/compare/v[0-9.]+\\.\\.\\.HEAD", replace = "[Unreleased]: https://github.com/anaxo-io/REPO/compare/v{{version}}...HEAD\n[{{version}}]: https://github.com/anaxo-io/REPO/compare/v{{prev_version}}...v{{version}}", exactly = 1 },
 ]
