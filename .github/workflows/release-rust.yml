@@ -1,0 +1,69 @@
+name: Release (Rust)
+
+# Reusable release workflow for Rust crates. Called from a repository's own release.yml
+# on a `v*` tag push; see RELEASING.md for the procedure it completes.
+#
+# Verifies the tag against the manifest, checks the artefact, then publishes the GitHub
+# release with notes taken from CHANGELOG.md. It does not re-run the test suite: releases
+# are cut from main, every commit there has passed CI, and this runs once per release on
+# a cold cache.
+on:
+  workflow_call:
+    inputs:
+      package:
+        description: >-
+          Run `cargo package` as the artefact check. Set false for crates that cannot be
+          packaged — a git dependency, say — and `cargo check --all-features` runs instead.
+        type: boolean
+        default: true
+      changelog:
+        description: Path to the Keep-a-Changelog file the release notes come from.
+        type: string
+        default: CHANGELOG.md
+
+permissions:
+  contents: write
+
+env:
+  CARGO_TERM_COLOR: always
+  RUSTFLAGS: -D warnings
+
+jobs:
+  verify:
+    name: verify the tag
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v7
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: Swatinem/rust-cache@v2
+
+      # The release action reads the changelog but never the manifest. A tag that
+      # disagrees with Cargo.toml would otherwise publish happily.
+      - name: Tag matches the crate version
+        run: |
+          tag="${GITHUB_REF_NAME#v}"
+          crate=$(cargo metadata --no-deps --format-version 1 | jq -r '.packages[0].version')
+          if [ "$tag" != "$crate" ]; then
+            echo "::error::tag $GITHUB_REF_NAME does not match Cargo.toml version $crate"
+            exit 1
+          fi
+
+      - name: Artefact builds from the files that would ship
+        if: inputs.package
+        run: cargo package
+
+      - name: Crate builds with every feature
+        if: ${{ !inputs.package }}
+        run: cargo check --all-features
+
+  create-release:
+    needs: verify
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v7
+      - uses: taiki-e/create-gh-release-action@v1
+        with:
+          changelog: ${{ inputs.changelog }}
+          token: ${{ secrets.GITHUB_TOKEN }}
