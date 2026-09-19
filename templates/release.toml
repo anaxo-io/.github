@@ -1,4 +1,5 @@
-# Copy to the repository root and replace REPO with the repository name.
+# Copy to the repository root, replace REPO with the repository name, and add "/release.toml"
+# to the `exclude` list in Cargo.toml: this file is maintainer tooling and must not ship.
 # Configuration for `cargo release`, which automates the one manual step before a tag:
 # bumping the version, dating the changelog section and fixing its links. See
 # CONTRIBUTING.md for the procedure, and run without `--execute` first — cargo-release

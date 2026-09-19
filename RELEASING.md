@@ -30,7 +30,8 @@ before the tag is one ordinary commit; everything after it is automated.
 ### Rust
 
 `cargo release` does steps 3 and 4 in one command, driven by a `release.toml` in the
-repository:
+repository (add `/release.toml` to `exclude` in `Cargo.toml`; it is maintainer tooling and
+must not ship in the crate):
 
 ```bash
 cargo release 0.3.0            # dry run: prints every edit, changes nothing
