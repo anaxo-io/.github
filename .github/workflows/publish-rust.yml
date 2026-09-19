@@ -1,0 +1,36 @@
+name: Publish (Rust)
+
+# Publishes the tagged crate to crates.io through Trusted Publishing. Called from a
+# repository's release.yml as a second job after the release one; see RELEASING.md.
+#
+# Separate from release-rust.yml on purpose. It needs `id-token: write`, and a called
+# workflow's permissions are checked at startup against the caller's grant — a
+# repository that does not publish, and so grants only `contents: write`, would fail
+# to start a combined workflow at all, even with the publish job gated off.
+#
+# GitHub proves this workflow's identity to crates.io per run and receives a token that
+# lives for the length of the job. No long-lived credential exists anywhere.
+on:
+  workflow_call:
+
+permissions:
+  contents: read
+  id-token: write
+
+env:
+  CARGO_TERM_COLOR: always
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v7
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: Swatinem/rust-cache@v2
+      - id: auth
+        uses: rust-lang/crates-io-auth-action@v1
+      # The package was already built and verified by release-rust.yml.
+      - run: cargo publish --no-verify
+        env:
+          CARGO_REGISTRY_TOKEN: ${{ steps.auth.outputs.token }}

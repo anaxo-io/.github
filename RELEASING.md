@@ -54,12 +54,9 @@ on:
     tags: ["v*"]
 permissions:
   contents: write
-  id-token: write      # only needed when publishing
 jobs:
   release:
     uses: anaxo-io/.github/.github/workflows/release-rust.yml@main
-    with:
-      publish: false   # true once the crate exists on crates.io; see below
 ```
 
 The shared workflow:
@@ -86,13 +83,31 @@ for the shape.
 
 ### Publishing to crates.io
 
-Off by default. A crate that publishes passes `publish: true` to the shared workflow and
-grants `id-token: write` in its caller; the workflow then publishes after the GitHub
-release using [Trusted Publishing](https://crates.io/docs/trusted-publishing) — GitHub
-proves the workflow's identity per run and no long-lived token exists anywhere. That is
-the only place publishing happens; `release.toml` keeps `publish = false`, because a
-published version can be yanked but never replaced or reused, and a command anyone can
-run from a laptop is the wrong place for that.
+A crate that publishes adds a second job to its caller, after the release one:
+
+```yaml
+permissions:
+  contents: write
+  id-token: write
+jobs:
+  release:
+    uses: anaxo-io/.github/.github/workflows/release-rust.yml@main
+  publish:
+    needs: release
+    uses: anaxo-io/.github/.github/workflows/publish-rust.yml@main
+    permissions:
+      contents: read
+      id-token: write
+```
+
+It publishes using [Trusted Publishing](https://crates.io/docs/trusted-publishing): GitHub
+proves the workflow's identity per run and no long-lived token exists anywhere. It is a
+separate workflow rather than an input on the first one because a called workflow's
+permissions are checked at startup against the caller's grant — a repository that does
+not publish would fail to start the combined workflow at all. That is the only place
+publishing happens; `release.toml` keeps `publish = false`, because a published version
+can be yanked but never replaced or reused, and a command anyone can run from a laptop
+is the wrong place for that.
 
 Getting there is two one-off steps, because Trusted Publishing needs the crate to exist:
 
@@ -101,8 +116,8 @@ Getting there is two one-off steps, because Trusted Publishing needs the crate t
    `cargo publish --dry-run`, then `cargo publish` with a crates.io token that is
    short-lived, scoped to `publish-new` only and to that one crate. Revoke it after.
 2. **Register the workflow.** On the crate's crates.io settings page, add the trusted
-   publisher: this organisation, the repository, workflow file `release.yml`. Then set
-   `publish: true` in the caller.
+   publisher: this organisation, the repository, workflow file `release.yml`. Then add
+   the `publish` job to the caller.
 
 `X.Y.Z` on crates.io is the tag `vX.Y.Z`, byte for byte.
 
