@@ -20,9 +20,18 @@ on:
         description: Path to the Keep-a-Changelog file the release notes come from.
         type: string
         default: CHANGELOG.md
+      publish:
+        description: >-
+          Publish to crates.io after the GitHub release, via Trusted Publishing. Off by
+          default: a crate opts in once its first version exists and the repository and
+          workflow are registered on the crate's settings page. The caller must also
+          grant `id-token: write`.
+        type: boolean
+        default: false
 
 permissions:
   contents: write
+  id-token: write
 
 env:
   CARGO_TERM_COLOR: always
@@ -67,3 +76,24 @@ jobs:
         with:
           changelog: ${{ inputs.changelog }}
           token: ${{ secrets.GITHUB_TOKEN }}
+
+  publish:
+    # Trusted Publishing: GitHub proves the workflow's identity to crates.io per run and
+    # gets a token that lives for the length of this job. No long-lived credential exists
+    # anywhere, which is why publishing lives here and not in a local command — a
+    # published version can be yanked but never replaced or reused.
+    #
+    # The package was already verified in `verify`; `--no-verify` skips rebuilding it.
+    if: inputs.publish
+    needs: create-release
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v7
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: Swatinem/rust-cache@v2
+      - id: auth
+        uses: rust-lang/crates-io-auth-action@v1
+      - run: cargo publish --no-verify
+        env:
+          CARGO_REGISTRY_TOKEN: ${{ steps.auth.outputs.token }}

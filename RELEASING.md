@@ -53,9 +53,12 @@ on:
     tags: ["v*"]
 permissions:
   contents: write
+  id-token: write      # only needed when publishing
 jobs:
   release:
     uses: anaxo-io/.github/.github/workflows/release-rust.yml@main
+    with:
+      publish: false   # true once the crate exists on crates.io; see below
 ```
 
 The shared workflow:
@@ -80,9 +83,27 @@ Repositories that ship executables add a build-and-upload matrix on top; see
 [`hmedkouri/cc-ledger`](https://github.com/hmedkouri/cc-ledger/blob/main/.github/workflows/release.yml)
 for the shape.
 
-Nothing is published to a package registry. If a repository starts, that step lives in
-the workflow behind a registry token secret — never in a command anyone can run locally —
-because a published version can be yanked but never replaced or reused.
+### Publishing to crates.io
+
+Off by default. A crate that publishes passes `publish: true` to the shared workflow and
+grants `id-token: write` in its caller; the workflow then publishes after the GitHub
+release using [Trusted Publishing](https://crates.io/docs/trusted-publishing) — GitHub
+proves the workflow's identity per run and no long-lived token exists anywhere. That is
+the only place publishing happens; `release.toml` keeps `publish = false`, because a
+published version can be yanked but never replaced or reused, and a command anyone can
+run from a laptop is the wrong place for that.
+
+Getting there is two one-off steps, because Trusted Publishing needs the crate to exist:
+
+1. **First version by hand.** Make the repository public (a crate whose `repository`
+   link 404s looks abandoned), then from a worktree at the tag — not from `main` —
+   `cargo publish --dry-run`, then `cargo publish` with a crates.io token that is
+   short-lived, scoped to `publish-new` only and to that one crate. Revoke it after.
+2. **Register the workflow.** On the crate's crates.io settings page, add the trusted
+   publisher: this organisation, the repository, workflow file `release.yml`. Then set
+   `publish: true` in the caller.
+
+`X.Y.Z` on crates.io is the tag `vX.Y.Z`, byte for byte.
 
 ## Branch rules that go with this
 
