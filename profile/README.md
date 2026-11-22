@@ -1,7 +1,5 @@
 # Anaxo
 
-Trading and market-data systems, and open-source tooling around them. Go, Rust, gRPC, PostgreSQL/TimescaleDB.
-
-Built and maintained by Hicham Medkouri — https://medkouri.uk
+Trading and market-data systems, and open-source tooling around them. C++, Rust, PostgreSQL/TimescaleDB.
 
 Site: https://anaxo.io
